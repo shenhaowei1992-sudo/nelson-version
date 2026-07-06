@@ -26,8 +26,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install xlsx
-        run: npm install -g xlsx
+      - name: Install dependencies
+        run: npm install xlsx
 
       - name: Regenerate HTML from xlsx
         run: |

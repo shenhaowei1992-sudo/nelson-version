@@ -4,7 +4,18 @@ const XLSX = (function() {
     try { return require(require('path').join(require('os').homedir(), 'AppData/Roaming/npm/node_modules/xlsx/xlsx.js')); }
     catch(e2) {
       try { return require(require('path').join(require('os').homedir(), '.npm-global/node_modules/xlsx/xlsx.js')); }
-      catch(e3) { throw new Error('Please install xlsx: npm install -g xlsx'); }
+      catch(e3) {
+        // Try Linux global paths
+        var linuxPaths = [
+          '/usr/local/lib/node_modules/xlsx/xlsx.js',
+          '/usr/lib/node_modules/xlsx/xlsx.js',
+          '/usr/share/node_modules/xlsx/xlsx.js'
+        ];
+        for (var i = 0; i < linuxPaths.length; i++) {
+          try { return require(linuxPaths[i]); } catch(e) {}
+        }
+        throw new Error('Please install xlsx: npm install -g xlsx');
+      }
     }
   }
 })();
