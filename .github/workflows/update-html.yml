@@ -1,17 +1,22 @@
-name: Update HTML from SVN xlsx
+name: Update HTML
 
 on:
-  schedule:
-    # 每天 UTC 0点 (北京时间 8点) 运行
-    - cron: '0 0 * * *'
-  workflow_dispatch:
   push:
     paths:
       - '*.xlsx'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -21,46 +26,24 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install xlsx module
+      - name: Install xlsx
         run: npm install -g xlsx
 
-      - name: Download xlsx from SVN
-        env:
-          SVN_USER: shenhaowei
-          SVN_PASS: ${{ secrets.SVN_PASSWORD }}
+      - name: Regenerate HTML from xlsx
         run: |
-          curl -u "${{ env.SVN_USER }}:${{ env.SVN_PASS }}" \
-            -X PROPFIND \
-            -H "Depth: 1" \
-            "https://mcp-svn-storm.iauto.com/mcp/svn/smartauto/Nelson/01_%E5%BC%80%E5%8F%91%E5%BA%93/22_Release/" \
-            -o /dev/null 2>&1
-          # 直接用svn客户端
-          sudo apt-get update -qq && sudo apt-get install -y -qq subversion 2>/dev/null
-          svn export --username "$SVN_USER" --password "$SVN_PASS" \
-            "http://svn.ci.iauto.com/svn/smartauto/Nelson/01_%E5%BC%80%E5%8F%91%E5%BA%93/22_Release/%E3%83%90%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B3%E7%AE%A1%E7%90%86%E8%A1%A8.xlsx" \
-            ./バージョン管理表.xlsx \
-            --non-interactive --trust-server-cert 2>/dev/null || true
-
-      - name: Check if xlsx exists
-        run: |
-          if [ -f バージョン管理表.xlsx ]; then
-            echo "xlsx_exist=true" >> $GITHUB_ENV
+          XLSX_FILE=$(ls *.xlsx 2>/dev/null | head -1)
+          if [ -n "$XLSX_FILE" ]; then
+            node gen_html.js "$XLSX_FILE" version_management.html
+            echo "HTML generated from $XLSX_FILE"
           else
-            echo "xlsx_exist=false" >> $GITHUB_ENV
+            echo "No xlsx found, keeping existing HTML"
           fi
 
-      - name: Generate HTML
-        if: env.xlsx_exist == 'true'
-        run: node gen_html.js バージョン管理表.xlsx version_management.html
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
 
-      - name: Commit and push if updated
-        if: env.xlsx_exist == 'true'
-        run: |
-          git config user.name "shenhaowei1992-sudo"
-          git config user.email "shenhaowei1992@gmail.com"
-          cp version_management.html version_management.html.tmp 2>/dev/null || true
-          git add version_management.html gen_html.js
-          git diff --quiet && git diff --staged --quiet || \
-            git commit -m "chore: auto-update version management table [skip ci]"
-          # Only push if we have commits
-          git push || true
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
