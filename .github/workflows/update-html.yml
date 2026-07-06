@@ -31,12 +31,12 @@ jobs:
 
       - name: Regenerate HTML from xlsx
         run: |
-          XLSX_FILE=$(ls *.xlsx 2>/dev/null | head -1)
-          if [ -n "$XLSX_FILE" ]; then
-            node gen_html.js "$XLSX_FILE" version_management.html
-            echo "HTML generated from $XLSX_FILE"
+          if [ -f version_management.xlsx ] || ls *.xlsx 2>/dev/null | grep -q .; then
+            XLSX_FILE=$(ls *.xlsx 2>/dev/null | head -1)
+            node gen_html.js "$(ls *.xlsx 2>/dev/null | head -1)" version_management.html
+            echo "HTML generated"
           else
-            echo "No xlsx found, keeping existing HTML"
+            echo "No xlsx found"
           fi
 
       - name: Upload Pages artifact
