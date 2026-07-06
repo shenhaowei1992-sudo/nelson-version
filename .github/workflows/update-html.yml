@@ -27,17 +27,23 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install xlsx
+        run: |
+          npm init -y
+          npm install xlsx@0.18.5
+          echo "--- node_modules ---"
+          ls node_modules/xlsx/ 2>/dev/null | head -5
+          echo "--- checking xlsx ---"
+          node -e "require('xlsx'); console.log('xlsx OK')"
 
       - name: Regenerate HTML from xlsx
         run: |
-          if [ -f version_management.xlsx ] || ls *.xlsx 2>/dev/null | grep -q .; then
-            XLSX_FILE=$(ls *.xlsx 2>/dev/null | head -1)
-            node gen_html.js "$(ls *.xlsx 2>/dev/null | head -1)" version_management.html
-            echo "HTML generated"
-          else
-            echo "No xlsx found"
-          fi
+          for f in *.xlsx; do
+            if [ -f "$f" ]; then
+              node gen_html.js "$f" index.html
+              echo "HTML generated from $f"
+              break
+            fi
+          done
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
